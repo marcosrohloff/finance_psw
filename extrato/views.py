@@ -1,9 +1,17 @@
+import datetime
+from io import BytesIO
 from django.shortcuts import render, redirect
 from extrato.models import Valores
 from perfil.models import Categoria, Conta
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from django.contrib import messages
 from django.contrib.messages import constants
+from datetime import datetime
+from django.template.loader import render_to_string
+import os
+from django.conf import settings
+from weasyprint import HTML
+from io import BytesIO
 
 def novo_valor(request):
     if request.method == 'GET':
@@ -40,3 +48,33 @@ def novo_valor(request):
 
         messages.add_message(request, constants.SUCCESS, 'Categoria cadastrada com sucesso')
         return redirect('/extrato/novo_valor')
+
+def view_extrato(request):
+    contas = Conta.objects.all()
+    categorias = Categoria.objects.all()
+
+    conta_get = request.GET.get('conta')
+    categoria_get = request.GET.get('categoria')
+    valores = Valores.objects.filter(data__month=datetime.now().month)
+
+    if conta_get:
+        valores = valores.filter(conta__id=conta_get)
+    if categoria_get:
+        valores = valores.filter(categoria__id=categoria_get)
+
+    return render(request, 'view_extrato.html', {'valores': valores, 'contas': contas, 'categorias': categorias})
+
+def exportar_pdf(request):
+    valores = Valores.objects.filter(data__month=datetime.now().month)
+    contas = Conta.objects.all()
+    categorias = Categoria.objects.all()
+
+    path_template = os.path.join(settings.BASE_DIR, 'templates/partials/extrato.html')
+    path_output = BytesIO()
+
+    template_render = render_to_string(path_template, {'valores': valores, 'contas': contas, 'categorias': categorias})
+    HTML(string=template_render).write_pdf(path_output)
+    
+    path_output.seek(0)
+    
+    return FileResponse(path_output, filename="extrato.pdf")
