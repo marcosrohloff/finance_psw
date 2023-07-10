@@ -13,6 +13,7 @@ from django.conf import settings
 from weasyprint import HTML
 from io import BytesIO
 
+
 def novo_valor(request):
     if request.method == 'GET':
         contas = Conta.objects.all()
@@ -25,7 +26,7 @@ def novo_valor(request):
         data = request.POST.get('data')
         conta = request.POST.get('conta')
         tipo = request.POST.get('tipo')
-        
+
         valores = Valores(
             valor=valor,
             categoria_id=categoria,
@@ -38,16 +39,18 @@ def novo_valor(request):
         valores.save()
 
         conta = Conta.objects.get(id=conta)
-        
+
         if tipo == 'E':
             conta.valor += int(valor)
         else:
             conta.valor -= int(valor)
 
-        conta.save()        
+        conta.save()
 
-        messages.add_message(request, constants.SUCCESS, 'Categoria cadastrada com sucesso')
+        messages.add_message(request, constants.SUCCESS,
+                             'Categoria cadastrada com sucesso')
         return redirect('/extrato/novo_valor')
+
 
 def view_extrato(request):
     contas = Conta.objects.all()
@@ -64,17 +67,20 @@ def view_extrato(request):
 
     return render(request, 'view_extrato.html', {'valores': valores, 'contas': contas, 'categorias': categorias})
 
+
 def exportar_pdf(request):
     valores = Valores.objects.filter(data__month=datetime.now().month)
     contas = Conta.objects.all()
     categorias = Categoria.objects.all()
 
-    path_template = os.path.join(settings.BASE_DIR, 'templates/partials/extrato.html')
+    path_template = os.path.join(
+        settings.BASE_DIR, 'templates/partials/extrato.html')
     path_output = BytesIO()
 
-    template_render = render_to_string(path_template, {'valores': valores, 'contas': contas, 'categorias': categorias})
+    template_render = render_to_string(
+        path_template, {'valores': valores, 'contas': contas, 'categorias': categorias})
     HTML(string=template_render).write_pdf(path_output)
-    
+
     path_output.seek(0)
-    
+
     return FileResponse(path_output, filename="extrato.pdf")
